@@ -50,7 +50,7 @@ class TasksController extends Controller
         //バリデーション
         $this->validate($request, [
             'content'=>'required|max:255',
-            'status'=>'required|max:255',
+            'status'=>'required|max:10',
         ]);
         
         //create a task
@@ -109,7 +109,7 @@ class TasksController extends Controller
         //valudation
         $this->validate($request, [
             'content'=>'required|max:255',
-            'status'=>'required|max:255',
+            'status'=>'required|max:10',
         ]);
 
         //get task
