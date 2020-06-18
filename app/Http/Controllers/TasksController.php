@@ -15,13 +15,23 @@ class TasksController extends Controller
      */
     public function index()
     {
-        //Get task list
-        $tasks = Task::all();
-        
-        //Show task list
-        return view('tasks.index', [
-            'tasks' => $tasks,
-        ]);
+        if (\Auth::check()) { 
+            // 認証済みユーザを取得
+            $user = \Auth::user();
+            // ユーザの投稿の一覧を作成日時の降順で取得
+            $tasks = $user->tasks()->orderBy('created_at', 'desc')->paginate(10);
+
+            $data = [
+                'user' => $user,
+                'tasks' => $tasks,
+            ];
+            
+            return view('tasks.index', $data);
+        }else {
+            
+            // Welcomeビューでそれらを表示
+            return view('welcome');
+        };
     }
 
     /**
@@ -48,16 +58,16 @@ class TasksController extends Controller
     public function store(Request $request)
     {
         //バリデーション
-        $this->validate($request, [
+        $request->validate([
             'content'=>'required|max:255',
             'status'=>'required|max:10',
         ]);
         
-        //create a task
-        $task = new Task;
-        $task->content = $request->content;
-        $task->status = $request->status;
-        $task->save();
+        // 認証済みユーザ（閲覧者）の投稿として作成（リクエストされた値をもとに作成）
+        $request->user()->tasks()->create([
+            'content' => $request->content,
+            'status' => $request->status,
+        ]);
         
         //Redirect to top page
         return redirect('/');
@@ -89,13 +99,16 @@ class TasksController extends Controller
     public function edit($id)
     {
         //get task
-        $task = Task::findOrFail($id);
+       $task = \App\Task::findOrFail($id);
         
-        //show on edit view
-        return view('tasks.edit', [
-            'task' => $task,
-        ]);
-    }
+        //承認ユーザの場合削除
+        if (\Auth::id() === $task->user_id) {
+            //show on edit view
+            return view('tasks.edit', [
+                'task' => $task,
+            ]);
+        }
+    }    
 
     /**
      * Update the specified resource in storage.
@@ -113,13 +126,14 @@ class TasksController extends Controller
         ]);
 
         //get task
-        $task = Task::findOrFail($id);
+        $task = \App\Task::findOrFail($id);
         
-        //update task
-        $task->content = $request->content;
-        $task->status = $request->status;
-        $task->save();
-        
+         //承認ユーザの場合アップデート
+        if (\Auth::id() === $task->user_id) {
+            //$requestの内容で$taskをupdateする。
+            $task->content=$request->content;
+            $task->save();
+        }
         //redirect to top page
         return redirect('/');
     }
@@ -130,13 +144,16 @@ class TasksController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
+     
     public function destroy($id)
     {
         //get taks
-        $task = Task::findOrFail($id);
+        $task = \App\Task::findOrFail($id);
         
-        //delete task
-        $task->delete();
+        //承認ユーザの場合削除
+        if (\Auth::id() === $task->user_id) {
+            $task->delete();
+        }
         
         //redirect to top page
         return redirect('/');
